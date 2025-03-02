@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
 )
 
-//thanks to https://hugo-johnsson.medium.com/rest-api-with-golang-and-mux-e934f581b8b5
+
 
 const data_folder = "data"
 
@@ -150,18 +151,33 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func saveData(outPutFile string) {
+	file, _ := os.OpenFile(outPutFile, os.O_CREATE, os.ModePerm)
+	defer file.Close()
+	encoder := json.NewEncoder(file) 
+	encoder.Encode(dummy_data)
+}
+
+func t_save(w http.ResponseWriter, r *http.Request) {
+	saveData("output.json")
+}
+
 func main() {
 	populate_sample_data()
 	fmt.Println(getLastItemID())
 
 	r := mux.NewRouter()
-	r.HandleFunc("/data", handlePost).Methods("POST")
-	r.HandleFunc("/data", handleGet).Methods("GET")
+	r.HandleFunc("/"+data_folder, handlePost).Methods("POST")
+	r.HandleFunc("/"+data_folder, handleGet).Methods("GET")
 	r.HandleFunc("/", handleGet).Methods("GET")
 	r.HandleFunc("/test", ID_tests).Methods("GET")
-	r.HandleFunc("/data/{id}", handleDelete).Methods("DELETE")
-	r.HandleFunc("/data/{id}", getPost).Methods("GET")
-	r.HandleFunc("/data/{id}", updatePost).Methods("PUT")
+	
+	//testing save function
+	r.HandleFunc("/save", t_save).Methods("GET")
+
+	r.HandleFunc("/"+data_folder+"/{id}", handleDelete).Methods("DELETE")
+	r.HandleFunc("/"+data_folder+"{id}", getPost).Methods("GET")
+	r.HandleFunc("/"+data_folder+"{id}", updatePost).Methods("PUT")
    
 	srv := &http.Server{
 	 Addr:    "localhost:8080",
