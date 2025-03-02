@@ -10,6 +10,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+//thanks to https://hugo-johnsson.medium.com/rest-api-with-golang-and-mux-e934f581b8b5
+
 const data_folder = "data"
 
 type MyData struct {
