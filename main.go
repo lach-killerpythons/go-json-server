@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 
+	"sample/sample"
+
 	"github.com/gorilla/mux"
 )
 
@@ -15,13 +17,31 @@ import (
 
 const data_folder = "data"
 
-type MyData struct {
+/* type MyData struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
 	Passion string `json:"passion"`
 }
 
-var dummy_data []MyData
+
+ */
+// import the type from the sample package
+type MyData = sample.MyData
+
+var dummy_data []MyData 
+
+func set_dummy_dataset(dataSet string) {
+	switch dataSet {
+	case "1":
+		dummy_data = sample.ExampleData1()
+	case "2":
+		dummy_data = sample.ExampleData2()
+	case "3":
+		dummy_data = sample.ExampleData3()
+	default:
+		panic(fmt.Sprintf(" dataset %s does not exist!", dataSet))
+	}
+}
 
 type statusRecorder struct {
 	http.ResponseWriter
@@ -33,11 +53,8 @@ func (sr *statusRecorder) WriteHeader(statusCode int) {
 	sr.ResponseWriter.WriteHeader(statusCode)
 }
 
-func populate_sample_data() {
-	dummy_data = append(dummy_data, MyData{ID:1, Name:"jimson",Passion:"food"})
-	dummy_data = append(dummy_data, MyData{ID:2, Name:"janey",Passion:"gym"})
-	dummy_data = append(dummy_data, MyData{ID:3, Name:"joey",Passion:"running"})
-}
+
+
 
 
 func handleGet(w http.ResponseWriter, req *http.Request) {
@@ -58,7 +75,7 @@ func getLastItemID() int{ //returns my data object ID
 }
 
 func ID_tests(w http.ResponseWriter, req *http.Request) {
-	
+	sample.ExampleData1()
 	t := []int{1,2,3,4,8,9}
 	for _, tt := range t {
 		fmt.Println(checkIDs(tt))
@@ -163,8 +180,9 @@ func t_save(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	populate_sample_data()
-	fmt.Println(getLastItemID())
+	set_dummy_dataset("1")
+
+	fmt.Printf("Number of objects loaded: %d ", getLastItemID())
 
 	r := mux.NewRouter()
 	r.HandleFunc("/"+data_folder, handlePost).Methods("POST")
