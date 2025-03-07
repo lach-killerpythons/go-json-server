@@ -17,14 +17,9 @@ import (
 
 const data_folder = "data"
 
-/* type MyData struct {
-	ID int `json:"id"`
-	Name string `json:"name"`
-	Passion string `json:"passion"`
-}
+const data_file = "dataset3.json"
 
 
- */
 // import the type from the sample package
 type MyData = sample.MyData
 
@@ -75,11 +70,40 @@ func getLastItemID() int{ //returns my data object ID
 }
 
 func ID_tests(w http.ResponseWriter, req *http.Request) {
-	sample.ExampleData1()
+
 	t := []int{1,2,3,4,8,9}
 	for _, tt := range t {
 		fmt.Println(checkIDs(tt))
 	}
+}
+
+
+func local_data_loader(dataFile string) {
+	
+	jsonData, err := os.ReadFile(dataFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Printf("{\"error\": \"File %s not found\"}", dataFile)
+		} else {
+			fmt.Printf("{\"error\": \"Internal Server Error\"}")
+		}
+		return
+	}
+
+	var dat []MyData
+	m_error := json.Unmarshal(jsonData, &dat)
+	if m_error != nil {
+		panic(m_error)
+	} 
+	dummy_data = dat
+	fmt.Println(dummy_data)
+
+}
+
+func TEST_ZONE(w http.ResponseWriter, req *http.Request) {
+	testFile := "data/dataset2.json"
+	local_data_loader(testFile)
+	//test_marshal()
 }
 
 func checkIDs(checkID int) bool {
@@ -134,7 +158,7 @@ func handlePost(w http.ResponseWriter, req *http.Request) {
 	sr := &statusRecorder{ResponseWriter: w, statusCode: http.StatusCreated}
 	logLine := fmt.Sprintf("%s %s %s %d", req.Method, output, req.RequestURI, sr.statusCode)
 	log.Print(logLine)
-   }
+}
 
 func getPost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -165,7 +189,6 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	json.NewEncoder(w).Encode(dummy_data)
-
 }
 
 func saveData(outPutFile string) {
@@ -180,19 +203,28 @@ func t_save(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	set_dummy_dataset("1")
+	
+	//this loads data sets from sample.go
+	//set_dummy_dataset("1")
+
+	local_data_loader(data_folder +"/"+ data_file)
 
 	fmt.Printf("Number of objects loaded: %d ", getLastItemID())
 
 	r := mux.NewRouter()
-	r.HandleFunc("/"+data_folder, handlePost).Methods("POST")
-	r.HandleFunc("/"+data_folder, handleGet).Methods("GET")
+
 	r.HandleFunc("/", handleGet).Methods("GET")
-	r.HandleFunc("/test", ID_tests).Methods("GET")
+
+	// test new functions here
+	r.HandleFunc("/test0", ID_tests).Methods("GET")
+	r.HandleFunc("/test", TEST_ZONE).Methods("GET")
 	
-	//testing save function
+	//save dummy_data to json file
 	r.HandleFunc("/save", t_save).Methods("GET")
 
+	// handle POST GET DELETE PUT
+	r.HandleFunc("/"+data_folder, handlePost).Methods("POST")
+	r.HandleFunc("/"+data_folder, handleGet).Methods("GET")
 	r.HandleFunc("/"+data_folder+"/{id}", handleDelete).Methods("DELETE")
 	r.HandleFunc("/"+data_folder+"{id}", getPost).Methods("GET")
 	r.HandleFunc("/"+data_folder+"{id}", updatePost).Methods("PUT")

@@ -15,6 +15,7 @@ type MyData struct {
 
 
 
+
 func ExampleData1() []MyData {
 
 	var dummy_data []MyData
