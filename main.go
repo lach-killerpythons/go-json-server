@@ -19,6 +19,8 @@ const data_folder = "data"
 
 const data_file = "dataset3.json"
 
+const origin_url = "http://localhost:3000"
+
 
 // import the type from the sample package
 type MyData = sample.MyData
@@ -54,6 +56,12 @@ func (sr *statusRecorder) WriteHeader(statusCode int) {
 
 func handleGet(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	origin := req.Header.Get("Origin")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
+	w.Header().Set("Access-Control-Allow-Origin", origin)
+	w.Header().Set("Access-Control-Allow-Methods", "GET")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+
 	json.NewEncoder(w).Encode(dummy_data)
 	sr := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
 	logLine := fmt.Sprintf("%s %s %d", req.Method, req.RequestURI, sr.statusCode)
@@ -140,6 +148,16 @@ func handleDelete(w http.ResponseWriter, req *http.Request) {
 }
 
 func handlePost(w http.ResponseWriter, req *http.Request) {
+
+	//method := req.Method
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
+	w.Header().Set("Access-Control-Allow-Origin", origin_url)
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+
 	var data MyData 
 	//fmt.Println(req.Header)
 	//fmt.Println(req.URL)
@@ -191,6 +209,70 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dummy_data)
 }
 
+func handle_PUT_DELETE_GET(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	//origin := req.Header.Get("Origin")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
+	w.Header().Set("Access-Control-Allow-Origin", origin_url)
+	w.Header().Set("Access-Control-Allow-Methods", "GET, DELETE, OPTIONS, PUT")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	method := r.Method
+
+	if method == "GET" {
+		params := mux.Vars(r)
+		i, _ := strconv.Atoi(params["id"])
+		for _, item := range dummy_data {
+		  if item.ID == i {
+			json.NewEncoder(w).Encode(item)
+			return
+		  }
+		}
+		json.NewEncoder(w).Encode(&MyData{})
+	}
+
+  	if method == "DELETE" {
+		w.Header().Set("Content-Type", "application/json")
+		params := mux.Vars(r)
+		myid_str := params["id"]
+		myid, err := strconv.Atoi(myid_str)
+		if err != nil {
+			fmt.Printf("error with id! %s", myid_str)
+	  	}
+	  	if checkIDs(myid) {
+		  for index, item := range dummy_data {
+			  if item.ID == myid {
+				dummy_data = append(dummy_data[:index], dummy_data[index+1:]...)
+				break
+			  }
+			}
+			json.NewEncoder(w).Encode(dummy_data)
+			sr := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+			logLine := fmt.Sprintf("%s %s %d", r.Method, r.RequestURI, sr.statusCode)
+			log.Print(logLine)
+	  	} else {
+		  fmt.Printf("id: %s not found!", myid_str)
+		}
+	}
+
+	if method == "PUT" {
+		params := mux.Vars(r)
+		i, _ := strconv.Atoi(params["id"])
+		for index, item := range dummy_data {
+			if item.ID == i {
+				dummy_data = append(dummy_data[:index], dummy_data[index+1:]...)      
+				var data MyData
+				_ = json.NewDecoder(r.Body).Decode(&data)
+				data.ID = i
+				dummy_data = append(dummy_data, data)
+				json.NewEncoder(w).Encode(&data)      
+				return
+			}
+		}
+		json.NewEncoder(w).Encode(dummy_data)
+	}
+	
+}
+
 func saveData(outPutFile string) {
 	file, _ := os.OpenFile(outPutFile, os.O_CREATE, os.ModePerm)
 	defer file.Close()
@@ -222,12 +304,12 @@ func main() {
 	//save dummy_data to json file
 	r.HandleFunc("/save", t_save).Methods("GET")
 
-	// handle POST GET DELETE PUT
-	r.HandleFunc("/"+data_folder, handlePost).Methods("POST")
+	// handle POST GET DELETE PUT -> add options for preflight response for CORS
+	r.HandleFunc("/"+data_folder, handlePost).Methods("POST", "OPTIONS")
 	r.HandleFunc("/"+data_folder, handleGet).Methods("GET")
-	r.HandleFunc("/"+data_folder+"/{id}", handleDelete).Methods("DELETE")
-	r.HandleFunc("/"+data_folder+"{id}", getPost).Methods("GET")
-	r.HandleFunc("/"+data_folder+"{id}", updatePost).Methods("PUT")
+	//r.HandleFunc("/"+data_folder+"/{id}", handleDelete).Methods("DELETE")
+	//r.HandleFunc("/"+data_folder+"{id}", getPost).Methods("GET")
+	r.HandleFunc("/"+data_folder+"/{id}", handle_PUT_DELETE_GET).Methods("GET","PUT","DELETE","OPTIONS")
    
 	srv := &http.Server{
 	 Addr:    "localhost:8080",
